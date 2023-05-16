@@ -10,7 +10,12 @@ const app = express();
 dotenv.config();
 app.use(bodyParser.json({ limit: "30mb", extended: true }));
 app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
-app.use(cors());
+const CORSORIGIN = process.env.CORSURL || 'http://localhost:3000';
+// app.use(cors());
+app.use(cors({
+    origin: CORSORIGIN,
+    credentials: true
+}));
 
 app.use('/posts', postRoutes);
 
