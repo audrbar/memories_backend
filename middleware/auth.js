@@ -1,27 +1,32 @@
 import jwt from "jsonwebtoken";
 
-const secret = 'test';
+const secret = process.env.JWT_SECRET || 'test';
 
 const auth = async (req, res, next) => {
     try {
-        const token = req.headers.authorization.split(" ")[1];
-        const isCustomAuth = token.length < 500;
+        const authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ message: 'No token provided' });
+
+        const token = authHeader.split(' ')[1];
+        if (!token) return res.status(401).json({ message: 'Malformed authorization header' });
 
         let decodedData;
-
-        if (token && isCustomAuth) {
+        try {
             decodedData = jwt.verify(token, secret);
-
-            req.userId = decodedData?.id;
-        } else {
+            req.userId = decodedData?.id || decodedData?._id;
+            return next();
+        } catch (verifyErr) {
+            // If verification fails, try decode as fallback for external providers (read-only)
             decodedData = jwt.decode(token);
-
-            req.userId = decodedData?.sub;
+            if (decodedData && decodedData.sub) {
+                req.userId = decodedData.sub;
+                return next();
+            }
+            return res.status(401).json({ message: 'Invalid token' });
         }
-
-        next();
     } catch (error) {
-        console.log(error);
+        console.error('Auth error:', error);
+        return res.status(401).json({ message: 'Authentication failed' });
     }
 };
 

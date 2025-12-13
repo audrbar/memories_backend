@@ -79,9 +79,13 @@ export const updatePost = async (req, res) => {
 
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(404).send(`No post with id: ${id}`);
 
-    const updatedPost = { creator, title, message, tags, selectedFile, _id: id };
+    const post = await PostMessage.findById(id);
+    if (!post) return res.status(404).send(`No post with id: ${id}`);
+    if (!req.userId || String(post.creator) !== String(req.userId)) return res.status(403).json({ message: 'Unauthorized to update this post' });
 
-    await PostMessage.findByIdAndUpdate(id, updatedPost, { new: true });
+    const updatedFields = { title, message, tags, selectedFile };
+
+    const updatedPost = await PostMessage.findByIdAndUpdate(id, { $set: updatedFields }, { new: true });
 
     res.json(updatedPost);
 }
@@ -90,6 +94,10 @@ export const deletePost = async (req, res) => {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(404).send(`No post with id: ${id}`);
+
+    const post = await PostMessage.findById(id);
+    if (!post) return res.status(404).send(`No post with id: ${id}`);
+    if (!req.userId || String(post.creator) !== String(req.userId)) return res.status(403).json({ message: 'Unauthorized to delete this post' });
 
     await PostMessage.findByIdAndRemove(id);
 
@@ -106,6 +114,8 @@ export const likePost = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(404).send(`No post with id: ${id}`);
 
     const post = await PostMessage.findById(id);
+
+    if (!post) return res.status(404).send(`No post with id: ${id}`);
 
     const index = post.likes.findIndex((id) => id === String(req.userId));
 
